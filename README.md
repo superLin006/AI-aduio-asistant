@@ -4,6 +4,19 @@
 
 这是一个面向课堂自动化的 AI 语音助手 Android 应用，专为 RK3576 和 MTKG520 硬件平台设计。应用实现了完整的语音交互流程：**唤醒词检测 → 语音命令识别 → 意图解析 → 设备控制**。
 
+## 算法架构
+
+![语音唤醒算法设计](picture/算法架构图.png)
+
+应用采用 **KWS（关键词识别） + VAD（语音活动检测） + ASR（语音识别）** 三层架构：
+
+1. **监听状态**：KWS 模型持续监听唤醒词
+2. **激活状态**：检测到唤醒词后，VAD 模型开始检测语音输入
+3. **处理状态**：ASR 模型识别语音内容，通过 DeepSeek LLM 解析意图并执行命令
+4. **循环反馈**：命令执行完成后返回监听状态
+
+> **注意**: 本项目使用**离线 ASR 模型**（Offline Recognizer），不依赖在线流式识别，确保隐私安全和低延迟响应。
+
 ### 核心功能
 
 - **智能唤醒**: 支持多个唤醒词（"你好军哥"、"小艺小艺"、"小米小米" 等）
@@ -28,6 +41,62 @@
 - Android SDK 24 (最低) / SDK 35 (目标)
 - JDK 11+
 - 已连接的 Android 设备或模拟器
+
+### ⚠️ 重要：模型文件配置
+
+由于模型文件体积较大（100+ MB），本仓库**不包含**模型文件。首次使用前，请按以下步骤配置：
+
+#### 1. 下载模型文件
+
+需要下载以下模型并放置到对应目录：
+
+**关键词识别模型 (KWS)**：
+- 下载地址：[sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01](https://github.com/k2-fsa/sherpa-onnx/releases)
+- 放置位置：`SherpaOnnxSimulateStreamingAsr/app/src/main/assets/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/`
+- 必需文件：`encoder-*.onnx`、`decoder-*.onnx`、`joiner-*.onnx`、`tokens.txt`、`keywords.txt`
+
+**ASR 模型（离线识别）**：
+- 下载地址：[sherpa-onnx-zipformer-ctc-small-zh-fp16-2025-07-16](https://github.com/k2-fsa/sherpa-onnx/releases)
+- 放置位置：`SherpaOnnxSimulateStreamingAsr/app/src/main/assets/sherpa-onnx-zipformer-ctc-small-zh-fp16-2025-07-16/`
+- 必需文件：`model.fp16.onnx`、`tokens.txt`
+
+**VAD 模型**：
+- 下载地址：[silero_vad.onnx](https://github.com/k2-fsa/sherpa-onnx/releases)
+- 放置位置：`SherpaOnnxSimulateStreamingAsr/app/src/main/assets/silero_vad.onnx`
+
+**音频反馈文件**（可选）：
+- 放置位置：`SherpaOnnxSimulateStreamingAsr/app/src/main/assets/sounds/`
+- 文件：`listening.mp3`、`processing.mp3`、`completed.mp3`
+
+#### 2. 验证目录结构
+
+确保你的 `assets` 目录结构如下：
+
+```
+app/src/main/assets/
+├── sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01/
+│   ├── encoder-epoch-12-avg-2-chunk-16-left-64.onnx
+│   ├── decoder-epoch-12-avg-2-chunk-16-left-64.onnx
+│   ├── joiner-epoch-12-avg-2-chunk-16-left-64.onnx
+│   ├── tokens.txt
+│   └── keywords.txt
+├── sherpa-onnx-zipformer-ctc-small-zh-fp16-2025-07-16/
+│   ├── model.fp16.onnx
+│   └── tokens.txt
+├── silero_vad.onnx
+└── sounds/
+    ├── listening.mp3
+    ├── processing.mp3
+    └── completed.mp3
+```
+
+#### 3. RKNN 硬件加速模型（可选）
+
+如需使用 RK3576/RK3588 硬件加速，可额外下载 RKNN 模型：
+- SenseVoice RKNN 模型
+- 放置位置：`SherpaOnnxSimulateStreamingAsr/app/src/main/assets/sense-voice-rknn/`
+
+> **提示**：所有大型资源文件已在 `.gitignore` 中配置忽略，不会被提交到仓库。
 
 ### 构建与安装
 
@@ -78,9 +147,10 @@ adb logcat | grep -E "VoiceAssistant|KeywordSpotter|OfflineRecognizer"
 #### 语音识别层 (`com.k2fsa.sherpa.onnx`)
 
 - **KeywordSpotter.kt** - 唤醒词检测
-- **OfflineRecognizer.kt** - 批量 ASR (支持 44+ 种模型类型)
-- **OnlineRecognizer.kt** - 流式 ASR (支持 27+ 种模型)
+- **OfflineRecognizer.kt** - 离线批量 ASR (支持 44+ 种模型类型，本项目使用此模型)
 - **Vad.kt** - 语音活动检测 (Silero VAD 模型)
+
+> **注意**: 本项目**仅使用离线 ASR 模型**（OfflineRecognizer），不使用在线流式识别（OnlineRecognizer），确保数据隐私和稳定性。
 
 #### 语音助手层 (`com.k2fsa.sherpa.onnx.simulate.streaming.asr`)
 
@@ -116,11 +186,12 @@ adb logcat | grep -E "VoiceAssistant|KeywordSpotter|OfflineRecognizer"
 - **唤醒词**: 在 `keywords.txt` 中定义（支持 9 个唤醒词）
 - **文件**: encoder/decoder/joiner ONNX 模型 + tokens.txt
 
-#### ASR (自动语音识别) - 类型 39
+#### ASR (自动语音识别 - 离线模型) - 类型 39
 - **模型**: `sherpa-onnx-zipformer-ctc-small-zh-fp16-2025-07-16`
-- **类型**: ZipformerCtc（中文）
+- **类型**: ZipformerCtc（中文离线识别）
 - **文件**: `model.fp16.onnx`
 - **提供者**: CPU（可切换到 "rknn" 启用硬件加速）
+- **特点**: 完全离线运行，无需网络连接，保护用户隐私
 
 #### VAD (语音活动检测) - 类型 0
 - **模型**: Silero VAD

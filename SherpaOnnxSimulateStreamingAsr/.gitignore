@@ -13,3 +13,12 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# 忽略大型模型文件和资源文件
+app/src/main/assets/**/*.onnx
+app/src/main/assets/**/*.rknn
+app/src/main/assets/**/*.bin
+app/src/main/assets/**/*.mp3
+app/src/main/assets/**/*.wav
+# 但保留 .gitkeep 占位文件
+!app/src/main/assets/**/.gitkeep
