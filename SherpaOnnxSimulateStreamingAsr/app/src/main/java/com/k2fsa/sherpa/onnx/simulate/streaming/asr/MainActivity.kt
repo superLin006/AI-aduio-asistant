@@ -35,6 +35,7 @@ import androidx.navigation.compose.rememberNavController
 import com.k2fsa.sherpa.onnx.simulate.streaming.asr.screens.HelpScreen
 import com.k2fsa.sherpa.onnx.simulate.streaming.asr.screens.HomeScreen
 import com.k2fsa.sherpa.onnx.simulate.streaming.asr.ui.theme.SimulateStreamingAsrTheme
+import com.k2fsa.sherpa.onnx.config.ModelConfig
 
 const val TAG = "sherpa-onnx-sim-asr"
 private const val REQUEST_RECORD_AUDIO_PERMISSION = 200
@@ -59,47 +60,51 @@ class MainActivity : ComponentActivity() {
         ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION)
 
         Log.i(TAG, "========================================")
-        Log.i(TAG, "Initializing all components...")
+        Log.i(TAG, "开始初始化所有组件...")
         Log.i(TAG, "========================================")
-        
+
         // 1. 初始化ASR识别器
+        Log.i(TAG, "1/4 初始化ASR识别器 (模型类型: ${ModelConfig.Selection.ASR_MODEL_TYPE})")
         SimulateStreamingAsr.initOfflineRecognizer(this.assets, this.application)
-        
+
         // 2. 初始化VAD
+        Log.i(TAG, "2/4 初始化VAD (模型类型: ${ModelConfig.Selection.VAD_MODEL_TYPE})")
         SimulateStreamingAsr.initVad(this.assets)
 
         // 3. 初始化语音助手
+        Log.i(TAG, "3/4 初始化语音助手 (KWS模型类型: ${ModelConfig.Selection.KWS_MODEL_TYPE})")
         val kwsSuccess = VoiceAssistantManager.initVoiceAssistant(
             assetManager = this.assets,
-            context = this,  // ✨ 传递 context
-            kwsModelType = 0,
+            context = this,
+            kwsModelType = ModelConfig.Selection.KWS_MODEL_TYPE,
             timeout = 8000L
         )
-        
+
         if (kwsSuccess) {
-            Log.i(TAG, "✓ Voice Assistant initialized")
+            Log.i(TAG, "✓ 语音助手初始化成功")
             Toast.makeText(this, "语音助手已就绪", Toast.LENGTH_SHORT).show()
         } else {
-            Log.e(TAG, "✗ Voice Assistant initialization failed")
+            Log.e(TAG, "✗ 语音助手初始化失败")
             Toast.makeText(this, "语音助手初始化失败", Toast.LENGTH_LONG).show()
         }
 
         // 4. 初始化意图管理器
+        Log.i(TAG, "4/4 初始化意图管理器")
         val intentSuccess = IntentManager.initialize(
-            apiKey = "sk-12d7d35d220d4ba9ab2455feaaf61a59",
-            context = this  // ✨ 传递 context
+            apiKey = ModelConfig.Api.DEEPSEEK_API_KEY,
+            context = this
         )
-        
+
         if (intentSuccess) {
-            Log.i(TAG, "✓ Intent Manager initialized")
+            Log.i(TAG, "✓ 意图识别初始化成功")
             Toast.makeText(this, "意图识别已就绪", Toast.LENGTH_SHORT).show()
         } else {
-            Log.e(TAG, "✗ Intent Manager initialization failed")
+            Log.e(TAG, "✗ 意图识别初始化失败")
             Toast.makeText(this, "意图识别初始化失败", Toast.LENGTH_LONG).show()
         }
-    
+
         Log.i(TAG, "========================================")
-        Log.i(TAG, "All components initialization completed")
+        Log.i(TAG, "所有组件初始化完成")
         Log.i(TAG, "========================================")
     }
 
@@ -132,9 +137,10 @@ class MainActivity : ComponentActivity() {
     
     override fun onDestroy() {
         super.onDestroy()
-        Log.i(TAG, "Releasing all resources...")
+        Log.i(TAG, "释放所有资源...")
         VoiceAssistantManager.release()
         SimulateStreamingAsr.releaseAll()
+        Log.i(TAG, "资源释放完成")
     }
 }
 
