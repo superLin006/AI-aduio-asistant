@@ -7,6 +7,7 @@ Sophon BM1684X 和 Qwen3-ASR-0.6B 的纯 C++ Linux SDK。
 
 ```text
 android/   Android/Kotlin 应用
+android-kws-demo/ 独立的“小慧”CPU 唤醒词 Android Demo
 linux/     C++17 公共库、头文件、Demo 和测试
 configs/   无密钥配置模板
 models/    模型说明（大文件不进入 Git）
