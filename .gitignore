@@ -1,0 +1,8 @@
+/build/
+/deliver/
+/models/**/*.bmodel
+/models/**/*.onnx
+/models/**/*.rknn
+*.tar.gz
+.env
+/.cache/
