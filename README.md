@@ -7,7 +7,7 @@ Sophon BM1684X 和 Qwen3-ASR-0.6B 的纯 C++ Linux SDK。
 
 ```text
 android/   Android/Kotlin 应用
-android-kws-demo/ 独立的“小慧”CPU 唤醒词 Android Demo
+demos/     独立 demo（android-kws-demo = “小慧”CPU 唤醒词；rk3588-speaker-demo = RK3588 声纹）
 linux/     C++17 公共库、头文件、Demo 和测试
 configs/   无密钥配置模板
 models/    模型说明（大文件不进入 Git）
@@ -68,10 +68,10 @@ DEEPSEEK_API_KEY=your-local-key
 ## Linux / RK3588 声纹（RKNN）
 
 声纹模块支持 RK3588 内置 NPU（sherpa-onnx RKNN 后端，`provider="rknn"`），独立 demo 工程见
-[`rk3588-speaker-demo/`](rk3588-speaker-demo/)（对齐 `android-kws-demo` 的组织方式）：
+[`demos/rk3588-speaker-demo/`](demos/rk3588-speaker-demo/)（与 `demos/android-kws-demo/` 同一种组织方式）：
 
 ```sh
-cd rk3588-speaker-demo
+cd demos/rk3588-speaker-demo
 sh build.sh                 # 交叉编译（aarch64 / glibc 2.31）
 BOARD_PASS=... sh deploy.sh # 部署 + 板端一键 demo（注册 → 识别 → 陌生人拒绝）
 ```

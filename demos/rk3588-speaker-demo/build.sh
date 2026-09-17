@@ -9,7 +9,7 @@
 set -eu
 
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-REPO_DIR=$(dirname "$DIR")
+REPO_DIR=$(CDPATH= cd -- "$DIR/../.." && pwd)
 SHERPA_REPO=${SHERPA_REPO:-/home/xh/itc_project/sherpa-onnx-2025-1217}
 RKNN_LIB=${RKNN_LIB:-/home/xh/itc_project/RK_model_zoo/rknn2/eres2netv2/cpp/3rdparty/rknn}
 LLM_SDK=${LLM_SDK:-/home/xh/itc_project/superlin/llm-sdk}
@@ -24,7 +24,7 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
   -v "$SHERPA_REPO":/sherpa-repo:ro \
   -v "$RKNN_LIB":/rknn:ro \
   -v "$LLM_SDK":/llm-sdk:ro \
-  -w /repo/rk3588-speaker-demo \
+  -w /repo/demos/rk3588-speaker-demo \
   sophon-cross-build:latest sh -c '
     set -eu
     mkdir -p build/bin

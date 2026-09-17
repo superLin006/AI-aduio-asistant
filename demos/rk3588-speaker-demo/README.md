@@ -1,18 +1,18 @@
 # RK3588 声纹识别 Demo（独立工程）
 
-独立的一键演示目录（对齐 `android-kws-demo` 的组织方式），只做一件事：
+独立的一键演示目录（与 `demos/android-kws-demo/` 同一种组织方式），只做一件事：
 
 ```text
 16 kHz WAV -> fbank 特征 -> ERes2NetV2（RK3588 内置 NPU, provider=rknn）-> 声纹注册 / 识别
 ```
 
 演示流程：① 注册 3 位说话人（各 2 条）并保存声纹库 → ② 加载声纹库识别 7 条测试语音 → ③ 陌生人拒绝（未注册者被拒绝）。
-不包含 KWS / ASR / 意图识别（完整语音管线见 `../docs/linux-sophon.md`）。
+不包含 KWS / ASR / 意图识别（完整语音管线见 `../../docs/linux-sophon.md`）。
 
 ## 目录
 
 ```text
-rk3588-speaker-demo/
+demos/rk3588-speaker-demo/
 ├── README.md   本文件
 ├── build.sh    宿主机交叉编译（docker sophon-cross-build，glibc 2.31）
 ├── deploy.sh   一键：打包 -> 部署到板卡 -> 执行 demo（板卡 scp 不可用，走 tar 管道）
@@ -20,7 +20,7 @@ rk3588-speaker-demo/
 └── wavs/       13 条 16 kHz 真人验收音频（fangjun / leijun / liudehua）
 ```
 
-demo 程序复用应用代码，不复制源码：`../linux/apps/speaker_demo.cpp` + `../linux/src/speaker_verifier.cpp`。
+demo 程序复用应用代码，不复制源码：`../../linux/apps/speaker_demo.cpp` + `../../linux/src/speaker_verifier.cpp`。
 
 ## 前置资源
 
@@ -35,7 +35,7 @@ demo 程序复用应用代码，不复制源码：`../linux/apps/speaker_demo.cp
 ## 使用
 
 ```sh
-cd /home/xh/itc_project/superlin/AI-aduio-asistant/rk3588-speaker-demo
+cd /home/xh/itc_project/superlin/AI-aduio-asistant/demos/rk3588-speaker-demo
 
 # 1) 交叉编译（产物 build/bin/ai_audio_speaker_demo，aarch64 / glibc 2.31）
 sh build.sh

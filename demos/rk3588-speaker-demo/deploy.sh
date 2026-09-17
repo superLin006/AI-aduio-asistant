@@ -9,7 +9,6 @@
 set -eu
 
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-REPO_DIR=$(dirname "$DIR")
 BOARD_IP=${BOARD_IP:-172.16.58.55}
 BOARD_PORT=${BOARD_PORT:-26666}
 BOARD_USER=${BOARD_USER:-root}
