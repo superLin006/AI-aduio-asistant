@@ -26,6 +26,7 @@ void AssistantConfig::Validate() const {
   RequireFile(keyword_spotter.keywords_path, "KWS keywords");
   RequireFile(vad.model_path, "VAD model");
   asr.Validate();
+  if (!speaker.model_path.empty()) speaker.Validate();
   if (activation_timeout_seconds <= 0)
     throw std::invalid_argument("activation timeout must be positive");
   if (post_wake_guard_seconds < 0 || post_wake_guard_seconds > 2)
@@ -66,6 +67,9 @@ class AssistantPipeline::Impl {
     vad_ = std::make_unique<sherpa_onnx::cxx::VoiceActivityDetector>(
         sherpa_onnx::cxx::VoiceActivityDetector::Create(vc, 30));
     asr_ = std::make_unique<OfflineAsr>(config_.asr);
+    if (!config_.speaker.model_path.empty()) {
+      speaker_ = std::make_unique<SpeakerVerifier>(config_.speaker);
+    }
   }
 
   void Feed(const float *samples, int32_t count, int32_t rate) {
@@ -148,11 +152,27 @@ class AssistantPipeline::Impl {
       if (segment.samples.empty()) continue;
       try {
         auto result = asr_->Recognize(segment.samples.data(), segment.samples.size(), kSampleRate);
-        if (callback_) callback_({EventType::kTranscriptReady,
-                                 AssistantState::kListening, result.text, result});
+        if (callback_) {
+          AssistantEvent event{EventType::kTranscriptReady,
+                               AssistantState::kListening, result.text, result};
+          AttachSpeaker(segment.samples.data(), segment.samples.size(), &event);
+          callback_(event);
+        }
       } catch (const std::exception &e) { Emit(EventType::kError, e.what()); }
       Reset();
       return;
+    }
+  }
+  void AttachSpeaker(const float *samples, size_t count, AssistantEvent *event) const {
+    if (!speaker_) return;
+    try {
+      auto match = speaker_->Identify(samples, static_cast<int32_t>(count), kSampleRate);
+      if (match.matched) {
+        event->speaker_name = std::move(match.name);
+        event->speaker_score = match.score;
+      }
+    } catch (const std::exception &) {
+      // Speaker recognition is auxiliary; never drop the transcript over it.
     }
   }
   void Emit(EventType type, std::string text) const {
@@ -170,6 +190,7 @@ class AssistantPipeline::Impl {
   std::unique_ptr<sherpa_onnx::cxx::OnlineStream> kws_stream_;
   std::unique_ptr<sherpa_onnx::cxx::VoiceActivityDetector> vad_;
   std::unique_ptr<OfflineAsr> asr_;
+  std::unique_ptr<SpeakerVerifier> speaker_;
 };
 
 AssistantPipeline::AssistantPipeline(AssistantConfig c, EventCallback cb)

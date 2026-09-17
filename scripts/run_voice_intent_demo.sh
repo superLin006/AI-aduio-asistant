@@ -8,7 +8,9 @@ SHERPA_LIB=${SHERPA_LIB:-/home/xh/itc_project/sherpa-onnx-2025-1217/build-sophon
 KWS_DIR=${KWS_DIR:-$ROOT_DIR/.cache/models/kws-wenetspeech}
 VAD_MODEL=${VAD_MODEL:-$ROOT_DIR/android/app/src/main/assets/silero_vad.onnx}
 ASR_MODEL_DIR=${ASR_MODEL_DIR:-/home/xh/itc_project/Sophon_model_zoo/Qwen3-ASR/models}
+ASR_TOKENIZER_DIR=${ASR_TOKENIZER_DIR:-$ASR_MODEL_DIR/qwen3-asr-0.6b}
 ASR_HOTWORDS=${ASR_HOTWORDS:-}
+SPEAKER_MODEL=${SPEAKER_MODEL:-}
 BACKEND=${1:-local}
 
 : "${WAKE_AUDIO:?Set WAKE_AUDIO to a 16 kHz wake-word WAV}"
@@ -23,9 +25,13 @@ set -- \
   --kws-dir "$KWS_DIR" \
   --vad "$VAD_MODEL" \
   --asr-bmodel "$ASR_MODEL_DIR/BM1684X/qwen3_asr_merged_w4g64.bmodel" \
-  --asr-tokenizer "$ASR_MODEL_DIR" \
+  --asr-tokenizer "$ASR_TOKENIZER_DIR" \
   --wake-audio "$WAKE_AUDIO" \
   --command-audio "$COMMAND_AUDIO"
+
+if [ -n "$SPEAKER_MODEL" ]; then
+  set -- "$@" --speaker-model "$SPEAKER_MODEL"
+fi
 
 # Qwen3-ASR prompt hotwords are opt-in. A broad dispatch vocabulary can bias
 # unrelated commands, so production defaults to the model without a prompt.

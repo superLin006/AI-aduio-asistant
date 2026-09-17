@@ -52,6 +52,33 @@ The canonical Linux wake-word file is `configs/kws/keywords_xiaohui.txt` and
 contains only “小慧”. The board pipeline has been verified with a separately
 synthesized 16 kHz “小慧，小慧” wake sample.
 
+## Speaker recognition
+
+`SpeakerVerifier` (`linux/include/ai_audio_assistant/speaker_verifier.hpp`)
+wraps the sherpa-onnx speaker embedding C API: enrollment
+(`Register`/`RegisterFile`, multiple utterances per speaker are averaged),
+1:1 `Verify`, 1:N `Identify` (cosine similarity above a configurable
+threshold), and JSON persistence (`Save`/`Load`). Set
+`SpeakerVerifierConfig::model_path` to a sherpa-onnx speaker embedding ONNX
+model (wespeaker / 3d-speaker / nemo); `speakers_path` optionally
+auto-loads an enrollment database at construction.
+
+`AssistantPipeline` accepts an optional `AssistantConfig::speaker`. When
+enabled, the transcript event carries `speaker_name`/`speaker_score`
+identified from the VAD segment; failures never drop the transcript.
+`ai_audio_speaker_demo` exercises registration/verification/identification
+against WAV files; `ai_audio_pipeline_demo` and `ai_audio_voice_intent_demo`
+accept `--speaker-model` (+ `--speaker-speakers` on the pipeline demo).
+
+Reference assets: `scripts/download_speaker_model.sh` pulls the pre-exported
+`3dspeaker_speech_eres2netv2_sv_zh-cn_16k-common.onnx` model and the
+fangjun/leijun/liudehua enrollment and test utterances from the
+`sherpa-onnx` “speaker-recongition-models” release; `scripts/run_speaker_demo.sh`
+registers three speakers and identifies the test set. On BM1684X the board
+test identified 7/7 test utterances correctly (scores 0.78–0.90) and the
+full KWS → VAD → ASR → voiceprint pipeline reported the enrolled speaker
+(`fangjun`, score 0.73) for a 1-second command segment.
+
 ## Voice regression
 
 `ai_audio_batch_regression_demo` loads Qwen3-ASR and the local dispatch model

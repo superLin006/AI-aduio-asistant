@@ -80,6 +80,15 @@ int main(int argc, char** argv) {
     config.asr.bmodel_path = Value(argc, argv, "--asr-bmodel");
     config.asr.tokenizer_dir = Value(argc, argv, "--asr-tokenizer");
     config.asr.hotwords = Value(argc, argv, "--asr-hotwords");
+    config.speaker.model_path = Value(argc, argv, "--speaker-model");
+    const std::string speaker_threshold = Value(argc, argv, "--speaker-threshold");
+    if (!speaker_threshold.empty()) {
+      config.speaker.threshold = std::stof(speaker_threshold);
+    }
+    const std::string speaker_provider = Value(argc, argv, "--speaker-provider");
+    if (!speaker_provider.empty()) {
+      config.speaker.provider = speaker_provider;
+    }
 
     const auto wake = sherpa_onnx::cxx::ReadWave(Value(argc, argv, "--wake-audio"));
     const auto command =
@@ -96,6 +105,8 @@ int main(int argc, char** argv) {
           } else if (event.type == ai_audio_assistant::EventType::kTranscriptReady) {
             const auto result = intent->Recognize(event.text);
             std::cout << "transcript=" << event.text << '\n'
+                      << "speaker=" << event.speaker_name << '\n'
+                      << "speaker_score=" << event.speaker_score << '\n'
                       << "asr_ms=" << event.recognition.inference_seconds * 1000.0 << '\n'
                       << "intent_ms=" << result.elapsed_milliseconds << '\n'
                       << "semantic_plan=" << result.semantic_plan << '\n'

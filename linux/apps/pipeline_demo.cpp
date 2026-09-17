@@ -39,6 +39,16 @@ int main(int argc, char **argv) {
   config.vad.model_path = Value(argc, argv, "--vad");
   config.asr.bmodel_path = Value(argc, argv, "--bmodel");
   config.asr.tokenizer_dir = Value(argc, argv, "--tokenizer");
+  config.speaker.model_path = Value(argc, argv, "--speaker-model");
+  config.speaker.speakers_path = Value(argc, argv, "--speaker-speakers");
+  const std::string speaker_threshold = Value(argc, argv, "--speaker-threshold");
+  if (!speaker_threshold.empty()) {
+    config.speaker.threshold = std::stof(speaker_threshold);
+  }
+  const std::string speaker_provider = Value(argc, argv, "--speaker-provider");
+  if (!speaker_provider.empty()) {
+    config.speaker.provider = speaker_provider;
+  }
 
   const auto wake = sherpa_onnx::cxx::ReadWave(Value(argc, argv, "--wake-audio"));
   const auto command = sherpa_onnx::cxx::ReadWave(Value(argc, argv, "--command-audio"));
@@ -51,8 +61,11 @@ int main(int argc, char **argv) {
         std::move(config), [](const ai_audio_assistant::AssistantEvent &event) {
           std::cout << "[Event] type=" << static_cast<int>(event.type)
                     << " text=" << event.text << '\n';
-          if (event.type == ai_audio_assistant::EventType::kTranscriptReady)
+          if (event.type == ai_audio_assistant::EventType::kTranscriptReady) {
+            std::cout << "[Speaker] name=" << event.speaker_name
+                      << " score=" << event.speaker_score << '\n';
             std::cout << "[Timing] RTF=" << event.recognition.real_time_factor << '\n';
+          }
         });
     Feed(pipeline, wake, true);
     const float wake_tail[8000] = {};

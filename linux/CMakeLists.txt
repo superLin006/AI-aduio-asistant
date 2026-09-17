@@ -43,7 +43,8 @@ find_library(LLM_SDK_LIBRARY llmsdk
   PATHS "${LLM_SDK_DIR}/lib" NO_DEFAULT_PATH REQUIRED)
 
 add_library(ai_audio_assistant SHARED
-  src/assistant_pipeline.cpp src/intent_recognizer.cpp src/offline_asr.cpp)
+  src/assistant_pipeline.cpp src/intent_recognizer.cpp src/offline_asr.cpp
+  src/speaker_verifier.cpp)
 add_library(ai_audio_assistant::ai_audio_assistant ALIAS ai_audio_assistant)
 target_compile_features(ai_audio_assistant PUBLIC cxx_std_17)
 target_include_directories(ai_audio_assistant
@@ -78,6 +79,10 @@ if(AIAUDIO_BUILD_DEMOS)
   add_executable(ai_audio_batch_regression_demo apps/batch_regression_demo.cpp)
   target_include_directories(ai_audio_batch_regression_demo PRIVATE "${LLM_SDK_INCLUDE_DIR}")
   target_link_libraries(ai_audio_batch_regression_demo PRIVATE ai_audio_assistant)
+
+  add_executable(ai_audio_speaker_demo apps/speaker_demo.cpp)
+  target_include_directories(ai_audio_speaker_demo PRIVATE "${SHERPA_ONNX_INCLUDE_DIR}")
+  target_link_libraries(ai_audio_speaker_demo PRIVATE ai_audio_assistant)
 endif()
 
 if(AIAUDIO_BUILD_TESTS)
@@ -85,6 +90,10 @@ if(AIAUDIO_BUILD_TESTS)
   add_executable(ai_audio_config_test tests/config_test.cpp)
   target_link_libraries(ai_audio_config_test PRIVATE ai_audio_assistant)
   add_test(NAME ai_audio_config_test COMMAND ai_audio_config_test)
+
+  add_executable(ai_audio_speaker_config_test tests/speaker_config_test.cpp)
+  target_link_libraries(ai_audio_speaker_config_test PRIVATE ai_audio_assistant)
+  add_test(NAME ai_audio_speaker_config_test COMMAND ai_audio_speaker_config_test)
 endif()
 
 include(GNUInstallDirs)

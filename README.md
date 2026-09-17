@@ -65,6 +65,17 @@ DEEPSEEK_API_KEY=your-local-key
 
 没有密钥时应用会跳过在线意图识别，KWS/VAD/ASR 仍可独立运行。
 
+## Linux / RK3588 声纹（RKNN）
+
+声纹模块支持 RK3588 内置 NPU（sherpa-onnx RKNN 后端，`provider="rknn"`）：
+
+```sh
+sh scripts/build_rk3588_speaker.sh
+BOARD_PASS=... sh scripts/deploy_rk3588_speaker_test.sh
+```
+
+详见 [`docs/linux-rk3588.md`](docs/linux-rk3588.md)（板端实测：注册 3 人 × 2 条、识别 7/7，端到端 112–345 ms/条）。部署脚本会自动在板端执行一键 demo `scripts/run_rk3588_speaker_demo.sh`（注册 → 识别 → 陌生人拒绝）。
+
 ## 模型策略
 
 Linux 默认使用已经在 BM1684X 验证的 Qwen3-ASR-0.6B W4BF16 group-64 合并模型。

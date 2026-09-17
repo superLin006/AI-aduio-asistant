@@ -7,6 +7,7 @@
 #include <string>
 
 #include "ai_audio_assistant/offline_asr.hpp"
+#include "ai_audio_assistant/speaker_verifier.hpp"
 
 namespace ai_audio_assistant {
 
@@ -19,6 +20,10 @@ struct AIAUDIO_API AssistantEvent {
   AssistantState state;
   std::string text;
   RecognitionResult recognition;
+  // Populated on kTranscriptReady when speaker recognition is enabled; empty
+  // otherwise (or when the utterance does not match any registered speaker).
+  std::string speaker_name;
+  float speaker_score = 0.0F;
 };
 
 struct AIAUDIO_API KeywordSpotterConfig {
@@ -44,6 +49,8 @@ struct AIAUDIO_API AssistantConfig {
   KeywordSpotterConfig keyword_spotter;
   VadConfig vad;
   OfflineAsrConfig asr;
+  // Optional speaker recognition. Empty model_path disables it.
+  SpeakerVerifierConfig speaker;
   float post_wake_guard_seconds = 0.5F;
   float activation_timeout_seconds = 8.0F;
   void Validate() const;
