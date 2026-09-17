@@ -1,13 +1,13 @@
 #!/bin/sh
-# RK3588 声纹识别一键 demo（在板端部署目录内运行）
+# 板端一键声纹 demo（在板端部署目录内运行，由 deploy.sh 上传）。
 #
-# 依赖（由 scripts/deploy_rk3588_speaker_test.sh 部署到当前目录）:
+# 依赖（部署到当前目录）:
 #   bin/ai_audio_speaker_demo、lib/*.so、models/eres2netv2_T300_fp.rknn、wavs/*.wav
 #
 # 演示内容:
 #   Phase 1  注册 3 位说话人（每人 2 条语音）并保存声纹库
-#   Phase 2  加载声纹库，识别 7 条测试语音（统计正确数）
-#   Phase 3  未注册人员拒绝：声纹库只含 fangjun/leijun，李德华的语音应被拒绝
+#   Phase 2  加载声纹库，识别 7 条测试语音
+#   Phase 3  陌生人拒绝：声纹库只含 fangjun/leijun，李德华的语音应被拒绝
 set -eu
 
 BIN=./bin/ai_audio_speaker_demo

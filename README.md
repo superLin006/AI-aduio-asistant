@@ -67,14 +67,16 @@ DEEPSEEK_API_KEY=your-local-key
 
 ## Linux / RK3588 声纹（RKNN）
 
-声纹模块支持 RK3588 内置 NPU（sherpa-onnx RKNN 后端，`provider="rknn"`）：
+声纹模块支持 RK3588 内置 NPU（sherpa-onnx RKNN 后端，`provider="rknn"`），独立 demo 工程见
+[`rk3588-speaker-demo/`](rk3588-speaker-demo/)（对齐 `android-kws-demo` 的组织方式）：
 
 ```sh
-sh scripts/build_rk3588_speaker.sh
-BOARD_PASS=... sh scripts/deploy_rk3588_speaker_test.sh
+cd rk3588-speaker-demo
+sh build.sh                 # 交叉编译（aarch64 / glibc 2.31）
+BOARD_PASS=... sh deploy.sh # 部署 + 板端一键 demo（注册 → 识别 → 陌生人拒绝）
 ```
 
-详见 [`docs/linux-rk3588.md`](docs/linux-rk3588.md)（板端实测：注册 3 人 × 2 条、识别 7/7，端到端 112–345 ms/条）。部署脚本会自动在板端执行一键 demo `scripts/run_rk3588_speaker_demo.sh`（注册 → 识别 → 陌生人拒绝）。
+板端实测：注册 3 人 × 2 条、识别 **7/7**，陌生人 2/2 拒绝，端到端 112–345 ms/条。
 
 ## 模型策略
 
