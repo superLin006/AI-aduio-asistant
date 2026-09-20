@@ -72,11 +72,12 @@ DEEPSEEK_API_KEY=your-local-key
 
 ```sh
 cd demos/rk3588-speaker-demo
-sh build.sh                 # 交叉编译（aarch64 / glibc 2.31）
-BOARD_PASS=... sh deploy.sh # 部署 + 板端一键 demo（注册 → 识别 → 陌生人拒绝）
+sh build.sh                 # 交叉编译（aarch64 / glibc 2.31；离线 + 在线两个程序）
+BOARD_PASS=... sh deploy.sh # 部署 + 板端 demo（离线：注册→识别→陌生人拒绝；在线：VAD 流式 + 麦克风实时）
 ```
 
-板端实测：注册 3 人 × 2 条、识别 **7/7**，陌生人 2/2 拒绝，端到端 112–345 ms/条。
+板端实测：离线注册 3 人 × 2 条、识别 **7/7**，陌生人 2/2 拒绝，端到端 112–345 ms/条；
+在线（拼接对话流）8/8 语音段全部识别正确，麦克风采集链路已验证。
 
 ## 模型策略
 

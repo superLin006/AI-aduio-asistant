@@ -1,26 +1,28 @@
 # RK3588 声纹识别 Demo（独立工程）
 
-独立的一键演示目录（与 `demos/android-kws-demo/` 同一种组织方式），只做一件事：
+独立的一键演示目录（与 `demos/android-kws-demo/` 同一种组织方式），包含两个 demo：
 
 ```text
-16 kHz WAV -> fbank 特征 -> ERes2NetV2（RK3588 内置 NPU, provider=rknn）-> 声纹注册 / 识别
+离线：WAV 整段 -> fbank -> ERes2NetV2（RKNPU, provider=rknn）-> 注册 / 识别 / 陌生人拒绝
+在线：流式进音 -> silero VAD(CPU) 分段 -> 每段结束即 RKNN 声纹识别 -> 实时输出说话人
 ```
-
-演示流程：① 注册 3 位说话人（各 2 条）并保存声纹库 → ② 加载声纹库识别 7 条测试语音 → ③ 陌生人拒绝（未注册者被拒绝）。
-不包含 KWS / ASR / 意图识别（完整语音管线见 `../../docs/linux-sophon.md`）。
 
 ## 目录
 
 ```text
 demos/rk3588-speaker-demo/
-├── README.md   本文件
-├── build.sh    宿主机交叉编译（docker sophon-cross-build，glibc 2.31）
-├── deploy.sh   一键：打包 -> 部署到板卡 -> 执行 demo（板卡 scp 不可用，走 tar 管道）
-├── demo.sh     板端一键 demo 脚本（由 deploy.sh 上传并执行）
-└── wavs/       13 条 16 kHz 真人验收音频（fangjun / leijun / liudehua）
+├── README.md                    本文件
+├── build.sh                     宿主机交叉编译（离线 + 在线两个程序）
+├── deploy.sh                    一键：打包 -> 部署到板卡 -> 依次运行离线/在线 demo
+├── demo.sh                      板端离线 demo（注册 → 识别 → 陌生人拒绝）
+├── online_demo.sh               板端在线 demo（VAD 流式对话 + 麦克风实时）
+├── src/online_speaker_demo.cpp  在线 demo 程序源码
+├── models/silero_vad.onnx       VAD 模型（643 KB，随仓库提供）
+├── tools/make_conversation.py   生成拼接对话音频（供在线 demo 流式输入）
+└── wavs/                        验收音频（13 条真人 + conversation.wav 拼接对话）
 ```
 
-demo 程序复用应用代码，不复制源码：`../../linux/apps/speaker_demo.cpp` + `../../linux/src/speaker_verifier.cpp`。
+离线 demo 复用应用代码（不复制源码）：`../../linux/apps/speaker_demo.cpp` + `../../linux/src/speaker_verifier.cpp`。
 
 ## 前置资源
 
@@ -37,16 +39,17 @@ demo 程序复用应用代码，不复制源码：`../../linux/apps/speaker_demo
 ```sh
 cd /home/xh/itc_project/superlin/AI-aduio-asistant/demos/rk3588-speaker-demo
 
-# 1) 交叉编译（产物 build/bin/ai_audio_speaker_demo，aarch64 / glibc 2.31）
+# 1) 交叉编译（产物 build/bin/{ai_audio_speaker_demo, online_speaker_demo}）
 sh build.sh
 
-# 2) 一键部署 + 板端 demo（MODEL=... 可覆盖模型路径）
+# 2) 一键部署 + 依次运行两个 demo（MODEL=... 可覆盖模型路径）
 BOARD_PASS=... sh deploy.sh
 # 板端目录: /userdata/ai_audio_speaker_rk3588_test
-# 运行日志: build/board_run.log
+# 日志: build/board_run.log（离线）、build/board_online_run.log（在线）
+# 麦克风阶段: MIC_SECONDS=8 MIC_DEV=plughw:4,0 可调
 ```
 
-## 板端实测（2026-09-16）
+## 离线 demo 实测（2026-09-16）
 
 | 阶段 | 结果 |
 |---|---|
@@ -55,10 +58,24 @@ BOARD_PASS=... sh deploy.sh
 | 陌生人拒绝（库中剔除李德华） | identify 全部 `matched=0`；最近邻 0.29 / 0.40 < 阈值 0.5 |
 | 单窗（3 s）NPU 推理 | ~112 ms；端到端 112–345 ms/条 |
 
+## 在线（流式）demo
+
+- 管线：流式进音（100 ms/块）→ silero VAD（CPU）分段（min_speech 0.25 s / min_silence 0.6 s）→
+  每段结束即在 NPU 上计算 embedding 并做 1:N 识别 → 实时打印，例如
+  `[ 12.3s] speaker=leijun score=0.8300 matched=1 len=2.1s`
+- 两种输入方式（同一程序）：
+  - `--wav wavs/conversation.wav`：按实时节奏喂入（可复现，用于自动验证）
+  - `--stdin`：读 16 kHz 单声道 s16le 裸 PCM，配麦克风：
+    `arecord -D plughw:4,0 -f S16_LE -r 16000 -c 1 -t raw -d 8 | ./bin/online_speaker_demo --stdin ...`
+- 板端实测（2026-09-20）：
+  - **Phase A（拼接对话流，31.2 s / 6 段音频）**：VAD 分出 8 个语音段，**8/8 全部识别正确**
+    （分数 0.74–0.92，输出顺序与拼接顺序一致；同一说话人被 VAD 切分为多段时每段均识别正确）
+  - **Phase B（麦克风 plughw:4,0，8 s）**：采音链路正常（成功采集 8.0 s）；
+    自动运行期间无人说话故无语音段，有人对着麦克风说话即可看到逐段实时识别输出
+
 ## 说明
 
-- 调用方式：`ai_audio_speaker_demo --speaker-model <model.rknn> --speaker-provider rknn --threshold 0.5 ...`
-- CPU 对照：改 `--speaker-provider cpu` 并换 ONNX 模型即可（`--load/--save` 声纹库通用）
-- `num_threads`：RKNN 后端下映射为 NPU core mask（普通线程数自动映射为 AUTO）
+- 调用方式：`--speaker-provider rknn` 时 `--speaker-model` 指向 `.rknn` 模型（NPU）；改 `cpu` 则用 ONNX 模型
 - 模型契约：固定 300 帧窗口（3.0 s，10 ms/帧），末窗零填充，逐窗推理后 embedding 取均值；
   元数据（sample_rate / feature_normalize_type / output_dim / window_frames）由模型 custom_string 携带
+- `num_threads`：RKNN 后端下映射为 NPU core mask（普通线程数自动映射为 AUTO）

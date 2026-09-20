@@ -1,5 +1,5 @@
 #!/bin/sh
-# 交叉编译 RK3588 声纹 demo（应用代码 + sherpa RKNN 安装 + librknnrt）。
+# 交叉编译 RK3588 声纹 demo（离线 ai_audio_speaker_demo + 在线 online_speaker_demo）。
 # 使用 docker sophon-cross-build（Ubuntu 20.04 + GCC 9.4，目标 glibc 2.31 <= 板端 2.34）。
 #
 # 可覆盖的环境变量:
@@ -28,15 +28,12 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
   sophon-cross-build:latest sh -c '
     set -eu
     mkdir -p build/bin
-    aarch64-linux-gnu-g++ -std=c++17 -O2 -Wall -fPIC \
-      -I/repo/linux/include \
-      -I/sherpa-repo/build-rknn/install/include \
-      -I/llm-sdk/3rdparty/common/nlohmann \
-      /repo/linux/src/speaker_verifier.cpp /repo/linux/apps/speaker_demo.cpp \
-      -o build/bin/ai_audio_speaker_demo \
-      -L/sherpa-repo/build-rknn/install/lib -lsherpa-onnx-cxx-api -lsherpa-onnx-c-api \
-      -L/rknn/lib -lrknnrt -lpthread -ldl -lm \
-      -Wl,--allow-shlib-undefined -Wl,-rpath,\$ORIGIN/../lib
-    file build/bin/ai_audio_speaker_demo
+    COMMON="-std=c++17 -O2 -Wall -fPIC -I/repo/linux/include -I/sherpa-repo/build-rknn/install/include -I/llm-sdk/3rdparty/common/nlohmann"
+    LIBS="-L/sherpa-repo/build-rknn/install/lib -lsherpa-onnx-cxx-api -lsherpa-onnx-c-api -L/rknn/lib -lrknnrt -lpthread -ldl -lm -Wl,--allow-shlib-undefined -Wl,-rpath,\$ORIGIN/../lib"
+    aarch64-linux-gnu-g++ $COMMON /repo/linux/src/speaker_verifier.cpp /repo/linux/apps/speaker_demo.cpp \
+      -o build/bin/ai_audio_speaker_demo $LIBS
+    aarch64-linux-gnu-g++ $COMMON src/online_speaker_demo.cpp /repo/linux/src/speaker_verifier.cpp \
+      -o build/bin/online_speaker_demo $LIBS
+    file build/bin/ai_audio_speaker_demo build/bin/online_speaker_demo
   '
 echo BUILD_DONE
