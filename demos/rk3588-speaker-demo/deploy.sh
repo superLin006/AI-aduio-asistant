@@ -23,7 +23,7 @@ OUT=$DIR/build
 
 [ -f "$OUT/bin/ai_audio_speaker_demo" ] || { echo "缺少 build/bin/ai_audio_speaker_demo，先执行 sh build.sh" >&2; exit 1; }
 [ -f "$MODEL" ] || { echo "模型不存在: $MODEL（可用 MODEL=... 覆盖）" >&2; exit 1; }
-[ -f "$DIR/models/silero_vad.onnx" ] || { echo "缺少 models/silero_vad.onnx" >&2; exit 1; }
+[ -f "$DIR/models/silero_vad.rknn" ] || { echo "缺少 models/silero_vad.rknn（VAD，RKNPU 版）" >&2; exit 1; }
 
 export SSHPASS="$BOARD_PASS"
 SSH="sshpass -e ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o ConnectTimeout=10 -p $BOARD_PORT $BOARD_USER@$BOARD_IP"
@@ -36,7 +36,7 @@ cp "$OUT"/bin/* "$BUNDLE/bin/"
 cp "$SHERPA_INSTALL"/lib/*.so* "$BUNDLE/lib/"
 cp "$RKNN_LIB/lib/librknnrt.so" "$BUNDLE/lib/"
 cp "$MODEL" "$BUNDLE/models/"
-cp "$DIR/models/silero_vad.onnx" "$BUNDLE/models/"
+cp "$DIR"/models/*.rknn "$DIR"/models/*.onnx "$BUNDLE/models/"
 cp "$DIR"/wavs/*.wav "$BUNDLE/wavs/"
 ls "$BUNDLE/bin" "$BUNDLE/models"
 

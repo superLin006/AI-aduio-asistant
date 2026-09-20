@@ -4,7 +4,7 @@
 
 ```text
 离线：WAV 整段 -> fbank -> ERes2NetV2（RKNPU, provider=rknn）-> 注册 / 识别 / 陌生人拒绝
-在线：流式进音 -> silero VAD(CPU) 分段 -> 每段结束即 RKNN 声纹识别 -> 实时输出说话人
+在线：流式进音 -> silero VAD（默认 RKNPU）分段 -> 每段结束即 RKNN 声纹识别 -> 实时输出说话人
 ```
 
 ## 目录
@@ -17,7 +17,8 @@ demos/rk3588-speaker-demo/
 ├── demo.sh                      板端离线 demo（注册 → 识别 → 陌生人拒绝）
 ├── online_demo.sh               板端在线 demo（VAD 流式对话 + 麦克风实时）
 ├── src/online_speaker_demo.cpp  在线 demo 程序源码
-├── models/silero_vad.onnx       VAD 模型（643 KB，随仓库提供）
+├── models/silero_vad.onnx       VAD 模型（CPU，默认，643 KB）
+├── models/silero_vad.rknn       VAD 模型（RKNPU 可选实验项，2.2 MB，官方预转换；长流有漏检倾向）
 ├── tools/make_conversation.py   生成拼接对话音频（供在线 demo 流式输入）
 └── wavs/                        验收音频（13 条真人 + conversation.wav 拼接对话）
 ```
@@ -60,18 +61,33 @@ BOARD_PASS=... sh deploy.sh
 
 ## 在线（流式）demo
 
-- 管线：流式进音（100 ms/块）→ silero VAD（CPU）分段（min_speech 0.25 s / min_silence 0.6 s）→
+- 管线：流式进音（100 ms/块）→ silero VAD 分段（min_speech 0.25 s / min_silence 0.6 s）→
   每段结束即在 NPU 上计算 embedding 并做 1:N 识别 → 实时打印，例如
   `[ 12.3s] speaker=leijun score=0.8300 matched=1 len=2.1s`
+- **VAD 默认 CPU**（`models/silero_vad.onnx`，本对话流实测最稳）；阈值可调：`VAD_THRESHOLD`（默认 0.5）
+- NPU VAD（`models/silero_vad.rknn`，官方预转换）为**可选实验项**：
+  `VAD=./models/silero_vad.rknn VAD_PROVIDER=rknn sh online_demo.sh`
 - 两种输入方式（同一程序）：
   - `--wav wavs/conversation.wav`：按实时节奏喂入（可复现，用于自动验证）
   - `--stdin`：读 16 kHz 单声道 s16le 裸 PCM，配麦克风：
     `arecord -D plughw:4,0 -f S16_LE -r 16000 -c 1 -t raw -d 8 | ./bin/online_speaker_demo --stdin ...`
-- 板端实测（2026-09-20）：
-  - **Phase A（拼接对话流，31.2 s / 6 段音频）**：VAD 分出 8 个语音段，**8/8 全部识别正确**
-    （分数 0.74–0.92，输出顺序与拼接顺序一致；同一说话人被 VAD 切分为多段时每段均识别正确）
-  - **Phase B（麦克风 plughw:4,0，8 s）**：采音链路正常（成功采集 8.0 s）；
-    自动运行期间无人说话故无语音段，有人对着麦克风说话即可看到逐段实时识别输出
+
+### 板端实测（2026-09-20）
+
+Phase A（拼接对话流，31.2 s / 6 段音频；时间轴：fangjun-sr-1 0–2.3s / leijun-sr-1 3.0–7.2s /
+liudehua-sr-1 7.9–10.9s / fangjun-test-sr-1 11.6–17.2s / leijun-test-sr-1 17.9–26.1s / liudehua-test-sr-1 26.8–30.5s）：
+
+| VAD | 分段 | 结果 |
+|---|---|---|
+| **CPU @0.5（默认）** | 8 段 | ✅ 全部识别正确（0.74–0.96） |
+| NPU @0.5 | 6 段 | ❌ **漏检 17.9–26.1 s 的 8.2 s 语音**（复现两次） |
+| NPU @0.35 | 8 段 | ⚠️ 补回漏检段，但把相邻两人的两段合并成一段（误标倾向） |
+
+- 单条音频对照：NPU 与 CPU 分段一致（如 `fangjun-test-sr-1.wav` 两者逐段相同）
+- 结论：NPU VAD（fp16 转换）概率在边界区翻转，长流上不可靠；**默认用 CPU VAD**，NPU VAD 待上游复查
+
+Phase B（麦克风 `plughw:4,0`，8 s）：采音链路正常（成功采集 8.0 s）；
+自动运行期间无人说话故无语音段，有人对着麦克风说话即可看到逐段实时识别输出。
 
 ## 说明
 

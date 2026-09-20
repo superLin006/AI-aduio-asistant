@@ -72,6 +72,8 @@ int main(int argc, char **argv) {
   const std::string model = Value(argc, argv, "--speaker-model");
   const std::string provider = Value(argc, argv, "--speaker-provider");
   const std::string vad_model = Value(argc, argv, "--vad");
+  const std::string vad_provider = Value(argc, argv, "--vad-provider");
+  const std::string vad_threshold_str = Value(argc, argv, "--vad-threshold");
   const std::string threshold_str = Value(argc, argv, "--threshold");
   const std::string wav_in = Value(argc, argv, "--wav");
   const bool use_stdin = HasFlag(argc, argv, "--stdin");
@@ -108,14 +110,17 @@ int main(int argc, char **argv) {
     SherpaOnnxVadModelConfig vad_config;
     memset(&vad_config, 0, sizeof(vad_config));
     vad_config.silero_vad.model = vad_model.c_str();
-    vad_config.silero_vad.threshold = 0.5f;
+    vad_config.silero_vad.threshold =
+        vad_threshold_str.empty() ? 0.5f : std::stof(vad_threshold_str);
     vad_config.silero_vad.min_silence_duration = 0.6f;
     vad_config.silero_vad.min_speech_duration = 0.25f;
     vad_config.silero_vad.max_speech_duration = 12.0f;
     vad_config.silero_vad.window_size = 512;
     vad_config.sample_rate = kSampleRate;
     vad_config.num_threads = 1;
-    vad_config.provider = "cpu";
+    vad_config.provider = vad_provider.empty() ? "cpu" : vad_provider.c_str();
+    printf("vad=%s (provider=%s, threshold=%.2f)\n", vad_model.c_str(),
+           vad_config.provider, vad_config.silero_vad.threshold);
 
     const SherpaOnnxVoiceActivityDetector *vad =
         SherpaOnnxCreateVoiceActivityDetector(&vad_config, 30.0f);
