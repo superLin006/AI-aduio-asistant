@@ -17,6 +17,7 @@ demos/rk3588-speaker-demo/
 ├── demo.sh                      板端离线 demo（注册 → 识别 → 陌生人拒绝）
 ├── online_demo.sh               板端在线 demo（VAD 流式对话 + 麦克风实时）
 ├── src/online_speaker_demo.cpp  在线 demo 程序源码
+├── models/eres2netv2_T300_fp.rknn 声纹模型（本地交付模型，不提交到源仓库）
 ├── models/silero_vad.onnx       VAD 模型（CPU，默认，643 KB）
 ├── models/silero_vad.rknn       VAD 模型（RKNPU 可选实验项，2.2 MB，官方预转换；长流有漏检倾向）
 ├── tools/make_conversation.py   生成拼接对话音频（供在线 demo 流式输入）
@@ -29,9 +30,9 @@ demos/rk3588-speaker-demo/
 
 - sherpa-onnx（RKNN 后端）安装：`/home/xh/itc_project/sherpa-onnx-2025-1217/build-rknn/install`
   （构建方式见该仓库 `build-rknn-docker.sh`）
-- 声纹模型（固定 300 帧窗口，含 sherpa 元数据）：
-  `/home/xh/itc_project/RK_model_zoo/rknn2/eres2netv2/models/eres2netv2_T300_fp.rknn`
-  （转换与验收记录：`RK_model_zoo/rknn2/eres2netv2/README.md` 与 `.context/`）
+- 声纹模型（固定 300 帧窗口，含 sherpa 元数据）：放在 `models/eres2netv2_T300_fp.rknn`。
+  当前本机源文件是 `/home/xh/itc_project/RK_model_zoo/rknn2/eres2netv2/models/eres2netv2_T300_fp.rknn`
+  （转换与验收记录：`RK_model_zoo/rknn2/eres2netv2/README.md` 与 `.context/`）。
 - 板卡：`172.16.58.55`（Buildroot, librknnrt 2.3.2, RKNPU 驱动 0.9.8）
 - `BOARD_PASS`：从 `0_Note/board_credentials.md` 读取后导出（脚本不落盘密码）
 
@@ -43,12 +44,25 @@ cd /home/xh/itc_project/superlin/AI-aduio-asistant/demos/rk3588-speaker-demo
 # 1) 交叉编译（产物 build/bin/{ai_audio_speaker_demo, online_speaker_demo}）
 sh build.sh
 
-# 2) 一键部署 + 依次运行两个 demo（MODEL=... 可覆盖模型路径）
+# 2) 一键部署 + 依次运行两个 demo（默认用本目录 models/ 下的模型）
 BOARD_PASS=... sh deploy.sh
 # 板端目录: /userdata/ai_audio_speaker_rk3588_test
 # 日志: build/board_run.log（离线）、build/board_online_run.log（在线）
 # 麦克风阶段: MIC_SECONDS=8 MIC_DEV=plughw:4,0 可调
 ```
+
+## 开发/测试交付包
+
+交付包包含 `build/bundle` 中的 AArch64 程序和运行库、`models/`、`wavs/`、两个板端脚本，以及从 GitLab RKNN 分支编译出的 `sdk/include/` 与 `sdk/lib/`。SDK C/C++ API 库已针对包内 ONNX Runtime 1.24.4 重新链接，与板端 demo 共用同一份 ONNX Runtime 和 RKNN Runtime。包内附有直接包含 C++ 头文件调用 `SpeakerVerifier` 的示例源码和 AArch64 可执行文件。交付包目录和压缩包位于：
+
+```text
+build/delivery/rk3588-speaker-verification/
+build/delivery/rk3588-speaker-verification.tar.gz
+```
+
+把压缩包交给同事后，在 RK3588 板端解压并运行 `sh demo.sh` 验证离线注册、识别和陌生人拒绝；运行 `sh online_demo.sh` 验证 VAD 分段、声纹识别和可选麦克风输入。包内包含对应的 `libsherpa-onnx`、ONNX Runtime、RKNN Runtime、声纹/VAD 模型及验收 WAV。
+
+此包同时支持**板端运行验证**和**SDK 头文件调用验证**，目标为 RK3588 AArch64。包内 sherpa-onnx C/C++ API 库来自 GitLab 分支 `feat/rk3588-speaker-embedding-rknn` 提交 `1b4f57f`（基于 `itc` 6cbfa52，含 RKNN 声纹后端移植与审查修复）；`sdk/lib/` 是指向 `lib/` 同一组库的相对符号链接。预编译 demo 与 SDK 示例共用同一组 Sherpa 库、ONNX Runtime 1.24.4 和 RKNN Runtime。
 
 ## 离线 demo 实测（2026-09-16）
 
@@ -88,6 +102,23 @@ liudehua-sr-1 7.9–10.9s / fangjun-test-sr-1 11.6–17.2s / leijun-test-sr-1 17
 
 Phase B（麦克风 `plughw:4,0`，8 s）：采音链路正常（成功采集 8.0 s）；
 自动运行期间无人说话故无语音段，有人对着麦克风说话即可看到逐段实时识别输出。
+
+## 板端复核（2026-09-23，板卡 172.16.40.115）
+
+交付包验收时发现 `--speaker-provider rknn` 被忽略（报 `Protobuf parsing failed`）：原包内 sherpa 库由 GitLab `itc` 树构建，而该分支此前没有 RKNN 声纹后端。已把 RKNN 声纹后端移植进 GitLab（分支 `feat/rk3588-speaker-embedding-rknn`，提交 `1b4f57f`，MR !2），并从该树重建 libs + 两个 demo + SDK 示例后复核（含推送前代码审查的 JSON 加载加固）：
+
+| 项 | 结果 |
+|---|---|
+| 离线：注册 3 人 × 2 条 | 6/6 ok，`speakers=3` |
+| 离线：识别 7 条 | **7/7 全对**（0.776–0.892） |
+| 离线：陌生人拒绝 | 2/2 `matched=0`（最近邻 0.29 / 0.40 < 0.5） |
+| 在线：31.2 s 对话流（CPU VAD @0.5） | **8 段全部识别正确**（0.74–0.92） |
+| SDK 示例（`SpeakerVerifier`，C++ 头文件调用） | `identified=fangjun score=0.891706`、`verified=yes`、`speakers.json` 正常生成 |
+| 包内自校验 | `sha256sum -c SHA256SUMS` 33/33 OK |
+
+- 板卡无 USB 麦克风时在线 Phase B 会提示失败并正常退出（`arecord -l` 可查实际采集卡，用 `MIC_DEV` 覆盖）
+- 包内 ONNX Runtime 版本随 GitLab 树 cmake 默认（1.24.4）；BusyBox 板的 tar 不支持 `-z`，解压用 `gzip -dc xxx.tar.gz | tar -xf -`
+- 推送前代码审查的跟进（GitLab `1b4f57f` 之后）：构造时 `speakers_path` 存在但无法解析会立即报错（不再静默空库）、加载失败回滚保持三处状态一致、SDK 示例演示了构造异常的处理；app 侧 `ai_audio_assistant::SpeakerVerifier` 改为对 sherpa `SpeakerVerifier` 的**薄适配**（289→138 行，两边共用一份实现）
 
 ## 说明
 

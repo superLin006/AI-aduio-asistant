@@ -16,9 +16,14 @@ struct AIAUDIO_API SpeakerVerifierConfig {
   // "rknn". Empty disables speaker recognition.
   std::string model_path;
   // Optional JSON file used by Save()/Load() to persist registered speakers.
+  // It is loaded at construction when the file exists; a missing file starts
+  // with an empty database; a file that exists but cannot be parsed makes the
+  // constructor throw.
   std::string speakers_path;
   // Cosine similarity threshold used by Identify()/Verify().
   float threshold = 0.5F;
+  // For provider "rknn" this is not used as a thread count; any value >= 1
+  // selects automatic (multi-core) NPU execution.
   int32_t num_threads = 2;
   // sherpa-onnx execution provider, e.g. "cpu" or "rknn" (RK NPU).
   std::string provider = "cpu";
@@ -32,6 +37,8 @@ struct AIAUDIO_API SpeakerMatch {
   bool matched = false;
 };
 
+// Thin adapter over sherpa_onnx::cxx::SpeakerVerifier, which owns the
+// enrollment/verification implementation shared with the shipped SDK.
 class AIAUDIO_API SpeakerVerifier final {
  public:
   explicit SpeakerVerifier(SpeakerVerifierConfig config);
