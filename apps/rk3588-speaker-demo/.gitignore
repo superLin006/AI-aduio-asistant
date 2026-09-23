@@ -1,0 +1,5 @@
+# demo 构建产物（可再生成）
+build/
+
+# 本地大模型资产（生成或下载；见 assets/models/README.md，不入库）
+/models/*_T300_fp.rknn

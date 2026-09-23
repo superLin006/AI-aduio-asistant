@@ -1,8 +1,9 @@
 /build/
 /deliver/
-/models/**/*.bmodel
-/models/**/*.onnx
-/models/**/*.rknn
+/delivery/
+/assets/models/**/*.bmodel
+/assets/models/**/*.onnx
+/assets/models/**/*.rknn
 *.tar.gz
 .env
 /.cache/

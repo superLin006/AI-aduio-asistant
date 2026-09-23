@@ -6,13 +6,14 @@ Sophon BM1684X 和 Qwen3-ASR-0.6B 的纯 C++ Linux SDK。
 ## 目录
 
 ```text
-android/   Android/Kotlin 应用
-demos/     独立 demo（android-kws-demo = “小慧”CPU 唤醒词；rk3588-speaker-demo = RK3588 声纹）
-linux/     C++17 公共库、头文件、Demo 和测试
-configs/   无密钥配置模板
-models/    模型说明（大文件不进入 Git）
-scripts/   构建和运行脚本
+apps/      可运行应用与演示（android = Kotlin 应用；android-kws-demo = “小慧”CPU 唤醒词；
+           rk3588-speaker-demo = RK3588 声纹）
+sdk/       C++17 SDK（include/ + src/ + tests/）及其 CLI 程序（cli/）
+tools/     构建 / 运行 / 评测 / 数据脚本（build/ run/ eval/ data/）
+assets/    无密钥配置模板与模型资产索引（configs/ models/）
 docs/      架构与平台文档
+build/     本地构建产物（忽略）
+delivery/  本地交付产物（忽略；RK3588 声纹交付包所在）
 ```
 
 ![语音助手处理链路](docs/architecture/voice-assistant-pipeline.png)
@@ -21,27 +22,29 @@ docs/      架构与平台文档
 
 依赖：
 
-- sherpa-onnx Sophon SDK：`/home/xh/itc_project/sherpa-onnx-2025-1217/deliver`
+- sherpa-onnx Sophon SDK（ORT 1.24.4）：`/home/xh/itc_project/sherpa-onnx-2025-1217/build-sophon-ort1244-verified/install`
+  （由 `tools/build/build_sherpa_sophon_ort1244.sh` 生成）
+- LLM/调度 SDK：`/home/xh/itc_project/deliver/deliver_dispatch_sdk_v10_w8bf16`
 - Qwen3-ASR 模型：`/home/xh/itc_project/Sophon_model_zoo/Qwen3-ASR`
-- Docker 镜像：`sophon-cross-build:latest`
+- Sophon SDK / Docker 镜像：`Sophon_model_zoo/0_Toolkits/soc-sdk-sp4`、`sophon-cross-build:latest`
 
 ```sh
-sh scripts/build_linux_sophon.sh
-sh scripts/run_offline_demo.sh
+sh tools/build/build_linux_sophon.sh
+sh tools/run/run_offline_demo.sh
 ```
 
-公共头文件为 `linux/include/ai_audio_assistant/offline_asr.hpp`。Sophon 后端使用
+公共头文件为 `sdk/include/ai_audio_assistant/offline_asr.hpp`。Sophon 后端使用
 `provider="sophon"`，并通过 sherpa-onnx 的 `qwen3_asr.encoder` 字段加载合并的
 encoder + LLM BModel。单段音频上限为 30 秒，生产 Pipeline 应由 VAD 切段。
 
-完整语音入口位于 `linux/include/ai_audio_assistant/assistant_pipeline.hpp`，提供
+完整语音入口位于 `sdk/include/ai_audio_assistant/assistant_pipeline.hpp`，提供
 KWS、VAD、唤醒保护窗口和 Qwen3-ASR 的类型化事件接口。
 
 `ai_audio_voice_intent_demo` 在同一进程内连接完整语音 Pipeline 与所选意图后端，
-对应运行脚本为 `scripts/run_voice_intent_demo.sh`。
-Linux 默认唤醒词为“小慧”，唯一配置位于 `configs/kws/keywords_xiaohui.txt`。
+对应运行脚本为 `tools/run/run_voice_intent_demo.sh`。
+Linux 默认唤醒词为“小慧”，唯一配置位于 `assets/configs/kws/keywords_xiaohui.txt`。
 
-意图识别公共接口位于 `linux/include/ai_audio_assistant/intent_recognizer.hpp`，
+意图识别公共接口位于 `sdk/include/ai_audio_assistant/intent_recognizer.hpp`，
 同时支持板卡本地 Qwen3-0.6B 和 DeepSeek API。两者共用现有调度工具合同与
 解析链路。Linux/Sophon 全链路统一使用 ONNX Runtime 1.24.4，并由同一个
 `libai_audio_assistant.so` 提供；详见
@@ -49,10 +52,10 @@ Linux 默认唤醒词为“小慧”，唯一配置位于 `configs/kws/keywords_
 
 ## Android 构建
 
-先按 `models/README.md` 补齐 Android KWS、ASR 模型，然后：
+先按 `assets/models/README.md` 补齐 Android KWS、ASR 模型，然后：
 
 ```sh
-cd android
+cd apps/android
 ./gradlew assembleDebug
 ```
 
@@ -68,10 +71,10 @@ DEEPSEEK_API_KEY=your-local-key
 ## Linux / RK3588 声纹（RKNN）
 
 声纹模块支持 RK3588 内置 NPU（sherpa-onnx RKNN 后端，`provider="rknn"`），独立 demo 工程见
-[`demos/rk3588-speaker-demo/`](demos/rk3588-speaker-demo/)（与 `demos/android-kws-demo/` 同一种组织方式）：
+[`apps/rk3588-speaker-demo/`](apps/rk3588-speaker-demo/)（与 `apps/android-kws-demo/` 同一种组织方式）：
 
 ```sh
-cd demos/rk3588-speaker-demo
+cd apps/rk3588-speaker-demo
 sh build.sh                 # 交叉编译（aarch64 / glibc 2.31；离线 + 在线两个程序）
 BOARD_PASS=... sh deploy.sh # 部署 + 板端 demo（离线：注册→识别→陌生人拒绝；在线：VAD 流式 + 麦克风实时）
 ```
@@ -79,6 +82,8 @@ BOARD_PASS=... sh deploy.sh # 部署 + 板端 demo（离线：注册→识别→
 板端实测：离线注册 3 人 × 2 条、识别 **7/7**，陌生人 2/2 拒绝，端到端 112–345 ms/条；
 在线（拼接对话流）8/8 语音段全部识别正确（**声纹在 NPU；VAD 默认 CPU**，NPU VAD 为可选实验项、
 长流实测有漏检，详见 demo README），麦克风采集链路已验证。
+第二款声纹模型 CAM++（`models/campplus_T300_fp.rknn`）同口径通过（7/7 + 拒绝 2/2），
+单窗 32.7 ms（ERes2NetV2 为 111–120 ms）；交付包见 `delivery/`。
 
 ## 模型策略
 

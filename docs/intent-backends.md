@@ -35,26 +35,26 @@ DispatchExecutor + runtime DispatchContext
 已有部署包默认路径为：
 
 ```sh
-/data/deliver_dispatch_sdk_v9.5d_candidate_w8bf16
+/data/deliver_dispatch_sdk_v10_w8bf16
 ```
 
 本地链路：
 
 ```sh
-sh scripts/run_intent_demo.sh local '把信号源一在主屏上开一个窗口'
+sh tools/run/run_intent_demo.sh local '把信号源一在主屏上开一个窗口'
 ```
 
 完整语音链路使用同一进程中的常驻模型对象：
 
 ```sh
 WAKE_AUDIO=/path/to/wake.wav COMMAND_AUDIO=/path/to/command.wav \
-  sh scripts/run_voice_intent_demo.sh local
+  sh tools/run/run_voice_intent_demo.sh local
 ```
 
 云端链路（密钥仅通过进程环境提供）：
 
 ```sh
-DEEPSEEK_API_KEY='...' sh scripts/run_intent_demo.sh deepseek \
+DEEPSEEK_API_KEY='...' sh tools/run/run_intent_demo.sh deepseek \
   '把信号源一在主屏上开一个窗口'
 ```
 
