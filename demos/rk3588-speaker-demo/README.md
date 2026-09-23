@@ -62,7 +62,7 @@ build/delivery/rk3588-speaker-verification.tar.gz
 
 把压缩包交给同事后，在 RK3588 板端解压并运行 `sh demo.sh` 验证离线注册、识别和陌生人拒绝；运行 `sh online_demo.sh` 验证 VAD 分段、声纹识别和可选麦克风输入。包内包含对应的 `libsherpa-onnx`、ONNX Runtime、RKNN Runtime、声纹/VAD 模型及验收 WAV。
 
-此包同时支持**板端运行验证**和**SDK 头文件调用验证**，目标为 RK3588 AArch64。包内 sherpa-onnx C/C++ API 库来自 GitLab 分支 `feat/rk3588-speaker-embedding-rknn` 提交 `36b80b9`（基于 `itc` 6cbfa52，含 RKNN 声纹后端移植与两轮审查修复）；`sdk/lib/` 是指向 `lib/` 同一组库的相对符号链接。预编译 demo 与 SDK 示例共用同一组 Sherpa 库、ONNX Runtime 1.24.4 和 RKNN Runtime。
+此包同时支持**板端运行验证**和**SDK 头文件调用验证**，目标为 RK3588 AArch64。包内 sherpa-onnx C/C++ API 库来自 GitLab `itc` 分支（`36b80b9` 起含 RKNN 声纹后端移植与两轮审查修复，`d6f88c6` 起含 CAM++ 的 `window_align` 支持）；`sdk/lib/` 是指向 `lib/` 同一组库的相对符号链接。预编译 demo 与 SDK 示例共用同一组 Sherpa 库、ONNX Runtime 1.24.4 和 RKNN Runtime。
 
 ## 离线 demo 实测（2026-09-16）
 
@@ -105,7 +105,7 @@ Phase B（麦克风 `plughw:4,0`，8 s）：采音链路正常（成功采集 8.
 
 ## 板端复核（2026-09-23，板卡 172.16.40.115）
 
-交付包验收时发现 `--speaker-provider rknn` 被忽略（报 `Protobuf parsing failed`）：原包内 sherpa 库由 GitLab `itc` 树构建，而该分支此前没有 RKNN 声纹后端。已把 RKNN 声纹后端移植进 GitLab（分支 `feat/rk3588-speaker-embedding-rknn`，提交 `36b80b9`，MR !2），并从该树重建 libs + 两个 demo + SDK 示例后复核（含推送前两轮代码审查的 JSON 加载加固）：
+交付包验收时发现 `--speaker-provider rknn` 被忽略（报 `Protobuf parsing failed`）：原包内 sherpa 库由 GitLab `itc` 树构建，而该分支此前没有 RKNN 声纹后端。已把 RKNN 声纹后端移植进 GitLab（`itc` 分支提交 `d6f88c6`），并从该树重建 libs + 两个 demo + SDK 示例后复核（含推送前两轮代码审查的 JSON 加载加固）：
 
 | 项 | 结果 |
 |---|---|
