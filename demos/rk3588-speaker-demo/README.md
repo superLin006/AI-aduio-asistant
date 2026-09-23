@@ -123,6 +123,10 @@ Phase B（麦克风 `plughw:4,0`，8 s）：采音链路正常（成功采集 8.
 ## 说明
 
 - 调用方式：`--speaker-provider rknn` 时 `--speaker-model` 指向 `.rknn` 模型（NPU）；改 `cpu` 则用 ONNX 模型
-- 模型契约：固定 300 帧窗口（3.0 s，10 ms/帧），末窗零填充，逐窗推理后 embedding 取均值；
-  元数据（sample_rate / feature_normalize_type / output_dim / window_frames）由模型 custom_string 携带
+- 模型契约：固定 300 帧窗口（3.0 s，10 ms/帧），逐窗推理后 embedding 取均值；末窗默认零填充，
+  元数据 `window_align=right` 时改为末窗对齐句尾（无零填充）；元数据（sample_rate /
+  feature_normalize_type / output_dim / window_frames / window_align）由模型 custom_string 携带
+- 第二个模型：`models/campplus_T300_fp.rknn`（3D-Speaker CAM++ zh-cn，Apache-2.0，带 `window_align=right`），
+  用 `MODEL=./models/campplus_T300_fp.rknn sh demo.sh` 即可切换；单窗 32.7 ms（ERes2NetV2 111–120 ms），
+  识别/拒识与 ERes2NetV2 同口径通过，逐窗保真度约 0.94（已知限制，见交付包 README）
 - `num_threads`：RKNN 后端下映射为 NPU core mask（普通线程数自动映射为 AUTO）

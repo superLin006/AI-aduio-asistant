@@ -4,7 +4,8 @@
 set -eu
 
 BIN=./bin/online_speaker_demo
-MODEL=./models/eres2netv2_T300_fp.rknn
+# 默认 ERes2NetV2；可用 MODEL=./models/campplus_T300_fp.rknn 切换到 CAM++（见 README）
+MODEL=${MODEL:-./models/eres2netv2_T300_fp.rknn}
 # VAD 默认 CPU（本对话流实测最稳）；NPU VAD 为可选实验项：
 #   VAD=./models/silero_vad.rknn VAD_PROVIDER=rknn sh online_demo.sh
 # （已知问题：长流上有漏检/过度合并倾向，详见 README「在线（流式）demo」）

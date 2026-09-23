@@ -11,7 +11,8 @@
 set -eu
 
 BIN=./bin/ai_audio_speaker_demo
-MODEL=./models/eres2netv2_T300_fp.rknn
+# 默认 ERes2NetV2；可用 MODEL=./models/campplus_T300_fp.rknn 切换到 CAM++（见 README）
+MODEL=${MODEL:-./models/eres2netv2_T300_fp.rknn}
 W=./wavs
 export LD_LIBRARY_PATH=lib:${LD_LIBRARY_PATH:-}
 
